@@ -13,6 +13,9 @@ public partial class App : Application
 
     public static nint WindowHandle => WinRT.Interop.WindowNative.GetWindowHandle(Window);
 
+    private static System.Threading.Mutex? _singleInstanceMutex;
+    private static System.Threading.EventWaitHandle? _showEvent;
+
     public App()
     {
         UnhandledException += (s, e) =>
@@ -42,6 +45,37 @@ public partial class App : Application
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
+        _singleInstanceMutex = new System.Threading.Mutex(true, "OpenQCY.Desktop.SingleInstanceMutex", out bool createdNew);
+        if (!createdNew)
+        {
+            try
+            {
+                using var showSignal = System.Threading.EventWaitHandle.OpenExisting("OpenQCY.Desktop.ShowEvent");
+                showSignal.Set();
+            }
+            catch { }
+            Environment.Exit(0);
+            return;
+        }
+
+        try
+        {
+            _showEvent = new System.Threading.EventWaitHandle(false, System.Threading.EventResetMode.AutoReset, "OpenQCY.Desktop.ShowEvent");
+            var waitThread = new System.Threading.Thread(() =>
+            {
+                while (_showEvent.WaitOne())
+                {
+                    if (IsExiting) break;
+                    DispatcherQueue?.TryEnqueue(ShowMainWindow);
+                }
+            })
+            {
+                IsBackground = true
+            };
+            waitThread.Start();
+        }
+        catch { }
+
         var isStartupLaunch = WindowsStartupService.IsStartupLaunch(Environment.GetCommandLineArgs());
         Window = new MainWindow();
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
@@ -76,6 +110,12 @@ public partial class App : Application
     public static void ExitApplication()
     {
         IsExiting = true;
+        try
+        {
+            _showEvent?.Set();
+            _singleInstanceMutex?.ReleaseMutex();
+        }
+        catch { }
         ViewModel.Shutdown();
         if (Window is MainWindow mainWindow)
         {

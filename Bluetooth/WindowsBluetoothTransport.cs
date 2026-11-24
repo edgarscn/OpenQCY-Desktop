@@ -232,13 +232,10 @@ public sealed class WindowsBluetoothTransport : IBluetoothTransport
     {
         ArgumentNullException.ThrowIfNull(device);
 
-        var candidates = new ulong?[]
-            {
-                device.ControlAddress,
-                device.BluetoothAddress,
-                device.OtherAddress,
-            }
-            .Where(address => address.HasValue)
+        var candidates = (QcyUuids.IsJieli(device.VendorId)
+            ? new ulong?[] { device.BluetoothAddress, device.ControlAddress, device.OtherAddress }
+            : new ulong?[] { device.ControlAddress, device.BluetoothAddress, device.OtherAddress })
+            .Where(address => address.HasValue && address.Value != 0)
             .Select(address => address!.Value)
             .Distinct()
             .ToArray();

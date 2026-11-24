@@ -571,75 +571,152 @@ public partial class MainPageViewModel : ObservableObject
         var client = _deviceClient ?? throw new InvalidOperationException("The earbuds are not connected.");
         var state = client.State;
 
-        if (state.WearDetectionEnabled.HasValue && state.WearDetectionEnabled != profile.WearDetection)
+        try
         {
-            await client.SetWearDetectionAsync(profile.WearDetection);
-        }
-
-        var noiseControl = ToNoiseControl(profile.SelectedNoiseMode, profile.SelectedNoiseCancellationMode);
-        if (state.NoiseControl is not null && state.NoiseControl != noiseControl)
-        {
-            await client.SetNoiseModeAsync(
-                noiseControl.Mode,
-                noiseControl.CancellationMode ?? QcyNoiseCancellationMode.Adaptive);
-        }
-
-        if (state.GameModeEnabled.HasValue && state.GameModeEnabled != profile.GameModeEnabled)
-        {
-            await client.SetGameModeAsync(profile.GameModeEnabled);
-        }
-
-        if (state.SleepModeEnabled.HasValue && state.SleepModeEnabled != profile.SleepModeEnabled)
-        {
-            await client.SetSleepModeAsync(profile.SleepModeEnabled);
-        }
-
-        if (state.WindDetectionEnabled.HasValue && state.WindDetectionEnabled != profile.WindReductionEnabled)
-        {
-            await client.SetWindDetectionAsync(profile.WindReductionEnabled);
-        }
-
-        if (state.PromptVolume.HasValue)
-        {
-            var currentPercentage = state.PromptVolume.Value * 100d / state.PromptVolumeMaximum;
-            if (Math.Abs(currentPercentage - profile.PromptVolume) >= 1)
+            if (state.WearDetectionEnabled.HasValue && state.WearDetectionEnabled != profile.WearDetection)
             {
-                await client.SetPromptVolumeAsync(profile.PromptVolume);
+                await client.SetWearDetectionAsync(profile.WearDetection);
             }
         }
-
-        var autoPowerOff = ToAutoPowerOffMinutes(profile.DisconnectTimeout);
-        if (state.AutoPowerOffMinutes.HasValue && state.AutoPowerOffMinutes != autoPowerOff)
+        catch (Exception ex)
         {
-            await client.SetAutoPowerOffAsync(autoPowerOff);
+            System.Diagnostics.Debug.WriteLine($"WearDetection apply skipped: {ex.Message}");
         }
 
-        if (profile.SelectedEqualizerPreset == "Custom" && EqualizerSupported)
+        try
         {
-            await client.SetCustomEqualizerAsync(profile.EqBands);
+            var noiseControl = ToNoiseControl(profile.SelectedNoiseMode, profile.SelectedNoiseCancellationMode);
+            if (state.NoiseControl is not null && state.NoiseControl != noiseControl)
+            {
+                await client.SetNoiseModeAsync(
+                    noiseControl.Mode,
+                    noiseControl.CancellationMode ?? QcyNoiseCancellationMode.Adaptive);
+            }
         }
-        else if (EqualizerPresetsSupported &&
-            EqualizerPresetIds.TryGetValue(profile.SelectedEqualizerPreset, out var preset) &&
-            state.EqualizerPreset != preset)
+        catch (Exception ex)
         {
-            await client.SetEqualizerPresetAsync(preset);
+            System.Diagnostics.Debug.WriteLine($"NoiseMode apply skipped: {ex.Message}");
         }
 
-        if (KeyFunctionsSupported && state.KeyFunctions.Count > 0)
+        try
         {
-            await client.SetKeyFunctionsAsync(BuildKeyFunctionMap(profile, state.KeyFunctions));
+            if (state.GameModeEnabled.HasValue && state.GameModeEnabled != profile.GameModeEnabled)
+            {
+                await client.SetGameModeAsync(profile.GameModeEnabled);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"GameMode apply skipped: {ex.Message}");
+        }
+
+        try
+        {
+            if (state.SleepModeEnabled.HasValue && state.SleepModeEnabled != profile.SleepModeEnabled)
+            {
+                await client.SetSleepModeAsync(profile.SleepModeEnabled);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SleepMode apply skipped: {ex.Message}");
+        }
+
+        try
+        {
+            if (state.WindDetectionEnabled.HasValue && state.WindDetectionEnabled != profile.WindReductionEnabled)
+            {
+                await client.SetWindDetectionAsync(profile.WindReductionEnabled);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"WindDetection apply skipped: {ex.Message}");
+        }
+
+        try
+        {
+            if (state.PromptVolume.HasValue)
+            {
+                var currentPercentage = state.PromptVolume.Value * 100d / state.PromptVolumeMaximum;
+                if (Math.Abs(currentPercentage - profile.PromptVolume) >= 1)
+                {
+                    await client.SetPromptVolumeAsync(profile.PromptVolume);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"PromptVolume apply skipped: {ex.Message}");
+        }
+
+        try
+        {
+            var autoPowerOff = ToAutoPowerOffMinutes(profile.DisconnectTimeout);
+            if (state.AutoPowerOffMinutes.HasValue && state.AutoPowerOffMinutes != autoPowerOff)
+            {
+                await client.SetAutoPowerOffAsync(autoPowerOff);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AutoPowerOff apply skipped: {ex.Message}");
+        }
+
+        try
+        {
+            if (profile.SelectedEqualizerPreset == "Custom" && EqualizerSupported)
+            {
+                await client.SetCustomEqualizerAsync(profile.EqBands);
+            }
+            else if (EqualizerPresetsSupported &&
+                EqualizerPresetIds.TryGetValue(profile.SelectedEqualizerPreset, out var preset) &&
+                state.EqualizerPreset != preset)
+            {
+                await client.SetEqualizerPresetAsync(preset);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Equalizer apply skipped: {ex.Message}");
+        }
+
+        try
+        {
+            if (KeyFunctionsSupported && state.KeyFunctions.Count > 0)
+            {
+                await client.SetKeyFunctionsAsync(BuildKeyFunctionMap(profile, state.KeyFunctions));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"KeyFunctions apply skipped: {ex.Message}");
         }
 
         // These two settings can restart the Bluetooth link, so they are deliberately last.
-        if (state.LdacEnabled.HasValue && state.LdacEnabled != profile.LdacEnabled)
+        try
         {
-            await client.SetLdacAsync(profile.LdacEnabled);
+            if (state.LdacEnabled.HasValue && state.LdacEnabled != profile.LdacEnabled)
+            {
+                await client.SetLdacAsync(profile.LdacEnabled);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LDAC apply skipped: {ex.Message}");
         }
 
-        if (client.State.IsConnected && state.MultipointEnabled.HasValue &&
-            state.MultipointEnabled != profile.MultipointEnabled)
+        try
         {
-            await client.SetMultipointAsync(profile.MultipointEnabled);
+            if (client.State.IsConnected && state.MultipointEnabled.HasValue &&
+                state.MultipointEnabled != profile.MultipointEnabled)
+            {
+                await client.SetMultipointAsync(profile.MultipointEnabled);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Multipoint apply skipped: {ex.Message}");
         }
     }
 

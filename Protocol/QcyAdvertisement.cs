@@ -23,13 +23,19 @@ public sealed record QcyAdvertisement(
         var right = data[6];
         var deviceCase = data[7];
 
-        ulong? controlAddress = data.Length >= 17
-            ? BuildAddress(data[12], data[11], data[13], data[16], data[15], data[14])
-            : null;
+        ulong? controlAddress = null;
+        ulong? otherAddress = null;
 
-        ulong? otherAddress = data.Length >= 24
-            ? BuildAddress(data[19], data[18], data[20], data[23], data[22], data[21])
-            : null;
+        if (!QcyUuids.IsJieli(vendorId))
+        {
+            controlAddress = data.Length >= 17
+                ? BuildAddress(data[12], data[11], data[13], data[16], data[15], data[14])
+                : null;
+
+            otherAddress = data.Length >= 24
+                ? BuildAddress(data[19], data[18], data[20], data[23], data[22], data[21])
+                : null;
+        }
 
         if (controlAddress == 0)
         {
